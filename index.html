@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Código de Barras - Packing App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-dark: #2980b9;
+            --shadow-color: rgba(52, 152, 219, 0.4);
+            --background: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --text-secondary: #6c757d;
+            --success-bg: #d4edda;
+            --success-color: #155724;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text-color);
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            font-weight: 600;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        
+        .input-container {
+            width: 100%;
+            position: relative;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--shadow-color);
+        }
+        
+        .esc-tip {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        
+        .esc-icon {
+            display: inline-block;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1px 5px;
+            margin-right: 5px;
+            font-size: 12px;
+            background-color: #f5f5f5;
+        }
+        
+        .barcode-container {
+            margin-top: 10px;
+            padding: 30px;
+            border-radius: 12px;
+            background-color: var(--card-bg);
+            width: 100%;
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.1);
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 180px;
+        }
+        
+        #barcode {
+            max-width: 100%;
+        }
+        
+        .empty-state {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            text-align: center;
+            display: block;
+        }
+        
+        .error {
+            color: #e74c3c;
+            display: none;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .notification {
+            padding: 15px;
+            margin-top: 10px;
+            background-color: var(--success-bg);
+            color: var(--success-color);
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(-10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            text-align: center;
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .barcode-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Gerador de Código de Barras - Packing App</h1>
+            
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="text-input" placeholder="Digite aqui..." autofocus>
+            <div class="esc-tip"><span class="esc-icon">ESC</span> Pressione para limpar o campo</div>
+            <div id="error-message" class="error">O texto não pode estar vazio</div>
+        </div>
+        
+        <div id="notification" class="notification">
+            Campo limpo! Pressione ESC a qualquer momento para limpar o texto.
+        </div>
+        
+        <div class="barcode-container">
+            <svg id="barcode"></svg>
+            <div id="empty-state" class="empty-state">Digite um texto acima para gerar o código de barras</div>
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('text-input');
+        const barcodeElement = document.getElementById('barcode');
+        const errorMessage = document.getElementById('error-message');
+        const notification = document.getElementById('notification');
+        const barcodeContainer = document.querySelector('.barcode-container');
+        const emptyState = document.getElementById('empty-state');
+        
+        // Função para gerar o código de barras
+        function generateBarcode(text) {
+            if (!text.trim()) {
+                errorMessage.style.display = 'none';
+                barcodeContainer.style.boxShadow = '0 8px 25px rgba(52, 152, 219, 0.1)';
+                emptyState.style.display = 'block';
+                barcodeElement.style.display = 'none';
+                return;
+            }
+            
+            errorMessage.style.display = 'none';
+            emptyState.style.display = 'none';
+            barcodeElement.style.display = 'block';
+            barcodeContainer.style.boxShadow = '0 8px 25px rgba(52, 152, 219, 0.4)';
+            
+            try {
+                JsBarcode("#barcode", text, {
+                    format: "CODE128",
+                    lineColor: "#000",
+                    width: 2,
+                    height: 100,
+                    displayValue: true,
+                    fontSize: 16,
+                    margin: 10
+                });
+            } catch (e) {
+                console.error("Erro ao gerar código de barras:", e);
+                errorMessage.textContent = "Erro ao gerar o código de barras. Verifique o texto inserido.";
+                errorMessage.style.display = 'block';
+                emptyState.style.display = 'none';
+                barcodeContainer.style.boxShadow = '0 8px 25px rgba(231, 76, 60, 0.2)';
+            }
+        }
+        
+        // Função para mostrar a notificação
+        function showNotification() {
+            notification.classList.add('show');
+            
+            // Esconder a notificação após 3 segundos
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Gera o código de barras quando o texto mudar
+        textInput.addEventListener('input', function() {
+            generateBarcode(this.value);
+        });
+        
+        // Detecta quando a tecla ESC é pressionada
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                textInput.value = '';
+                generateBarcode('');
+                showNotification();
+                textInput.focus();
+            }
+        });
+        
+        // Inicia com o campo de texto vazio
+        window.onload = function() {
+            textInput.value = '';
+            generateBarcode('');
+        };
+    </script>
+</body>
+</html>
